@@ -378,6 +378,7 @@ cc_library_static {
         "//system/security/keystore/tests",
         "//system/security/provisioner",
         "//test/vts-testcase/security/avb",
+        "//vendor:__subpackages__",
     ],
     min_sdk_version: "29",
     apex_available: [
