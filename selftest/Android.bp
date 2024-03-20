@@ -45,6 +45,7 @@ cc_binary {
     name: "boringssl_self_test",
     visibility: [
         "//art/build/sdk",
+        "//external/conscrypt",
         "//external/conscrypt/apex",
         "//external/conscrypt/apex/testing",
     ],

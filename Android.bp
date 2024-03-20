@@ -246,9 +246,6 @@ cc_library {
     vendor_available: true,
     product_available: true,
     native_bridge_supported: true,
-    vndk: {
-        enabled: true,
-    },
     double_loadable: true,
     recovery_available: true,
     defaults: [
@@ -455,9 +452,6 @@ cc_library {
     vendor_available: true,
     product_available: true,
     native_bridge_supported: true,
-    vndk: {
-        enabled: true,
-    },
     host_supported: true,
     defaults: [
         "libssl_sources",
