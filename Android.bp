@@ -350,6 +350,7 @@ cc_library_static {
     visibility: [
         "//art/build/sdk",
         "//bootable/recovery/updater",
+        "//bootable/deprecated-ota/updater",
         "//external/conscrypt",
         "//external/python/cpython2",
         "//external/rust/crates/quiche",
