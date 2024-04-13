@@ -349,6 +349,7 @@ cc_library_static {
     name: "libcrypto_static",
     visibility: [
         "//art/build/sdk",
+        "//art/dex2oat", // Only for test use (note this module isn't in apex_available).
         "//bootable/recovery/updater",
         "//bootable/deprecated-ota/updater",
         "//external/conscrypt",
