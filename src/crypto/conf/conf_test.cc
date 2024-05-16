@@ -94,7 +94,8 @@ static void ExpectConfEquals(const CONF *conf, const ConfModel &model) {
 
   // There should not be any other values in |conf|. |conf| currently stores
   // both sections and values in the same map.
-  EXPECT_EQ(lh_CONF_VALUE_num_items(conf->data), total_values + model.size());
+  EXPECT_EQ(lh_CONF_SECTION_num_items(conf->sections), model.size());
+  EXPECT_EQ(lh_CONF_VALUE_num_items(conf->values), total_values);
 }
 
 TEST(ConfTest, Parse) {
@@ -309,9 +310,94 @@ key7 = value7  # section1
 
       // Punctuation is allowed in key names.
       {
-          "key.1 = value\n",
+          "key!%&*+,-./;?@^_|~1 = value\n",
           {
-              {"default", {{"key.1", "value"}}},
+              {"default", {{"key!%&*+,-./;?@^_|~1", "value"}}},
+          },
+      },
+
+      // Only the first equals counts as a key/value separator.
+      {
+          "key======",
+          {
+              {"default", {{"key", "====="}}},
+          },
+      },
+
+      // Empty keys and empty values are allowed.
+      {
+          R"(
+[both_empty]
+=
+[empty_key]
+=value
+[empty_value]
+key=
+[equals]
+======
+[]
+empty=section
+)",
+          {
+              {"default", {}},
+              {"both_empty", {{"", ""}}},
+              {"empty_key", {{"", "value"}}},
+              {"empty_value", {{"key", ""}}},
+              {"equals", {{"", "====="}}},
+              {"", {{"empty", "section"}}},
+          },
+      },
+
+      // After the first equals, the value can freely contain more equals.
+      {
+          "key1 = \\$value1\nkey2 = \"$value2\"",
+          {
+              {"default", {{"key1", "$value1"}, {"key2", "$value2"}}},
+          },
+      },
+
+      // Non-ASCII bytes are allowed in values.
+      {
+          "key = \xe2\x98\x83",
+          {
+              {"default", {{"key", "\xe2\x98\x83"}}},
+          },
+      },
+
+      // An escaped backslash is not a line continuation.
+      {
+          R"(
+key1 = value1\\
+key2 = value2
+)",
+          {
+              {"default", {{"key1", "value1\\"}, {"key2", "value2"}}},
+          },
+      },
+
+      // An unterminated escape sequence at the end of a line is silently
+      // ignored. Normally, this would be a line continuation, but the line
+      // continuation logic does not count backslashes and only looks at the
+      // last two characters. This is probably a bug.
+      {
+          R"(
+key1 = value1\\\
+key2 = value2
+)",
+          {
+              {"default", {{"key1", "value1\\"}, {"key2", "value2"}}},
+          },
+      },
+
+      // The above also happens inside a quoted string, even allowing the quoted
+      // string to be unterminated. This is also probably a bug.
+      {
+          R"(
+key1 = "value1\\\
+key2 = value2
+)",
+          {
+              {"default", {{"key1", "value1\\"}, {"key2", "value2"}}},
           },
       },
   };

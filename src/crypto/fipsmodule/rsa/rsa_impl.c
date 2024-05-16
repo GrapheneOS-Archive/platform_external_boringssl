@@ -155,7 +155,7 @@ static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
     return 0;
   }
   *out = copy;
-  CONSTTIME_SECRET(copy->d, sizeof(BN_ULONG) * width);
+  bn_secret(copy);
 
   return 1;
 }
@@ -259,8 +259,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
           goto err;
         }
         rsa->iqmp_mont = iqmp_mont;
-        CONSTTIME_SECRET(rsa->iqmp_mont->d,
-                         sizeof(BN_ULONG) * rsa->iqmp_mont->width);
+        bn_secret(rsa->iqmp_mont);
       }
     }
   }
@@ -622,7 +621,9 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  if (BN_ucmp(f, rsa->n) >= 0) {
+  // The input to the RSA private transform may be secret, but padding is
+  // expected to construct a value within range, so we can leak this comparison.
+  if (constant_time_declassify_int(BN_ucmp(f, rsa->n) >= 0)) {
     // Usually the padding functions would catch this.
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
@@ -794,7 +795,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
-  assert(BN_ucmp(I, n) < 0);
+  declassify_assert(BN_ucmp(I, n) < 0);
 
   if (// |m1| is the result modulo |q|.
       !mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
@@ -830,7 +831,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // bound the width slightly higher, so fix it. This trips constant-time checks
   // because a naive data flow analysis does not realize the excess words are
   // publicly zero.
-  assert(BN_cmp(r0, n) < 0);
+  declassify_assert(BN_cmp(r0, n) < 0);
   bn_assert_fits_in_bytes(r0, BN_num_bytes(n));
   if (!bn_resize_words(r0, n->width)) {
     goto err;
@@ -1002,20 +1003,25 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     // retrying. That is, we reject a negligible fraction of primes that are
     // within the FIPS bound, but we will never accept a prime outside the
     // bound, ensuring the resulting RSA key is the right size.
-    if (BN_cmp(out, sqrt2) <= 0) {
+    //
+    // Values over the threshold are discarded, so it is safe to leak this
+    // comparison.
+    if (constant_time_declassify_int(BN_cmp(out, sqrt2) <= 0)) {
       continue;
     }
 
     // RSA key generation's bottleneck is discarding composites. If it fails
     // trial division, do not bother computing a GCD or performing Miller-Rabin.
     if (!bn_odd_number_is_obviously_composite(out)) {
-      // Check gcd(out-1, e) is one (steps 4.5 and 5.6).
+      // Check gcd(out-1, e) is one (steps 4.5 and 5.6). Leaking the final
+      // result of this comparison is safe because, if not relatively prime, the
+      // value will be discarded.
       int relatively_prime;
-      if (!BN_sub(tmp, out, BN_value_one()) ||
+      if (!bn_usub_consttime(tmp, out, BN_value_one()) ||
           !bn_is_relatively_prime(&relatively_prime, tmp, e, ctx)) {
         goto err;
       }
-      if (relatively_prime) {
+      if (constant_time_declassify_int(relatively_prime)) {
         // Test |out| for primality (steps 4.5.1 and 5.6.1).
         int is_probable_prime;
         if (!BN_primality_test(&is_probable_prime, out,
@@ -1173,8 +1179,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     }
 
     // Retry if |rsa->d| <= 2^|prime_bits|. See appendix B.3.1's guidance on
-    // values for d.
-  } while (BN_cmp(rsa->d, pow2_prime_bits) <= 0);
+    // values for d. When we retry, p and q are discarded, so it is safe to leak
+    // this comparison.
+  } while (constant_time_declassify_int(BN_cmp(rsa->d, pow2_prime_bits) <= 0));
 
   assert(BN_num_bits(pm1) == (unsigned)prime_bits);
   assert(BN_num_bits(qm1) == (unsigned)prime_bits);
@@ -1187,6 +1194,9 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
     goto bn_err;
   }
   bn_set_minimal_width(rsa->n);
+
+  // |rsa->n| is computed from the private key, but is public.
+  bn_declassify(rsa->n);
 
   // Sanity-check that |rsa->n| has the specified size. This is implied by
   // |generate_prime|'s bounds.
@@ -1239,6 +1249,11 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           const BIGNUM *e_value, BN_GENCB *cb,
                                           int check_fips) {
   boringssl_ensure_rsa_self_test();
+
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
 
   RSA *tmp = NULL;
   uint32_t err;

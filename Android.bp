@@ -734,7 +734,7 @@ libbssl_sys_raw_flags = [
 // Rust bindings
 rust_bindgen {
     name: "libbssl_sys_raw",
-    source_stem: "bindings",
+    source_stem: "bssl_sys_bindings",
     crate_name: "bssl_sys_raw",
     host_supported: true,
     wrapper_src: "src/rust/bssl-sys/wrapper.h",
@@ -753,11 +753,10 @@ rust_bindgen {
 
 rust_bindgen {
     name: "libbssl_sys_raw_nostd",
-    source_stem: "bindings",
+    source_stem: "bssl_sys_bindings",
     crate_name: "bssl_sys_raw",
     wrapper_src: "src/rust/bssl-sys/wrapper.h",
     bindgen_flags: [
-        "--raw-line=#![no_std]",
         "--ctypes-prefix=core::ffi",
     ] + libbssl_sys_raw_flags,
     header_libs: [
@@ -819,14 +818,6 @@ cc_library_host_static {
     ],
 }
 
-// Replace the upstream CMake placeholder with a re-export of all of the local bindgen output.
-genrule {
-    name: "libbssl_sys_src",
-    srcs: ["src/rust/bssl-sys/src/lib.rs"],
-    out: ["lib.rs"],
-    cmd: "sed 's@^include!(env!(\"BINDGEN_RS_FILE\"));@pub use bssl_sys_raw::*;@' $(in) > $(out)",
-}
-
 rust_defaults {
     name: "libbssl_sys_defaults",
     host_supported: true,
@@ -836,13 +827,16 @@ rust_defaults {
         "//system/keymint/boringssl",
         "//system/security/prng_seeder",
     ],
-    // Use the modified source with placeholder replaced.
-    srcs: [":libbssl_sys_src"],
+    srcs: [
+        "src/rust/bssl-sys/src/lib.rs",
+        ":libbssl_sys_raw",
+    ],
+    shared_libs: [
+        "libcrypto",
+        "libssl",
+    ],
     vendor_available: true,
     product_available: true,
-    // Since libbssl_sys_raw is not publicly visible, we can't accidentally
-    // force a double-link by linking statically, so do so.
-    rlibs: ["libbssl_sys_raw"],
 }
 
 rust_library {
@@ -855,6 +849,7 @@ rust_library {
         "//apex_available:platform",
         "com.android.virt",
     ],
+    cfgs: ["unsupported_inline_wrappers"],
 }
 
 rust_library_host_rlib {
@@ -863,11 +858,12 @@ rust_library_host_rlib {
     whole_static_libs: [
         "libbssl_rust_support_static",
     ],
+    cfgs: ["unsupported_inline_wrappers"],
 }
 
 genrule {
     name: "libbssl_sys_src_nostd",
-    srcs: [":libbssl_sys_src"],
+    srcs: ["src/rust/bssl-sys/src/lib.rs"],
     out: ["lib.rs"],
     cmd: "(echo '#![no_std]' && cat $(in)) > $(out)",
 }
@@ -878,8 +874,10 @@ rust_library_rlib {
     visibility: [
         "//packages/modules/Virtualization:__subpackages__",
     ],
-    srcs: [":libbssl_sys_src_nostd"],
-    rlibs: ["libbssl_sys_raw_nostd"],
+    srcs: [
+        ":libbssl_sys_src_nostd",
+        ":libbssl_sys_raw_nostd",
+    ],
     prefer_rlib: true,
     no_stdlibs: true,
     stdlibs: [
@@ -889,6 +887,7 @@ rust_library_rlib {
     whole_static_libs: [
         "libbssl_rust_support_baremetal",
     ],
+    cfgs: ["unsupported_inline_wrappers"],
 }
 
 // High-level Rust crate `bssl-crypto`

@@ -230,13 +230,11 @@ int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
     }
   }
 
-  // if (ret->data.ptr != NULL) X509_OBJECT_free_contents(ret);
-
+  // TODO(crbug.com/boringssl/685): This should call
+  // |X509_OBJECT_free_contents|.
   ret->type = tmp->type;
-  ret->data.ptr = tmp->data.ptr;
-
+  ret->data = tmp->data;
   X509_OBJECT_up_ref_count(ret);
-
   return 1;
 }
 
@@ -391,8 +389,27 @@ static X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
   return sk_X509_OBJECT_value(h, idx);
 }
 
-STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st) {
-  return st->objs;
+static X509_OBJECT *x509_object_dup(const X509_OBJECT *obj) {
+  X509_OBJECT *ret = X509_OBJECT_new();
+  if (ret == NULL) {
+    return NULL;
+  }
+  ret->type = obj->type;
+  ret->data = obj->data;
+  X509_OBJECT_up_ref_count(ret);
+  return ret;
+}
+
+STACK_OF(X509_OBJECT) *X509_STORE_get1_objects(X509_STORE *store) {
+  CRYPTO_MUTEX_lock_read(&store->objs_lock);
+  STACK_OF(X509_OBJECT) *ret =
+      sk_X509_OBJECT_deep_copy(store->objs, x509_object_dup, X509_OBJECT_free);
+  CRYPTO_MUTEX_unlock_read(&store->objs_lock);
+  return ret;
+}
+
+STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *store) {
+  return store->objs;
 }
 
 STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
@@ -503,12 +520,8 @@ static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
   return NULL;
 }
 
-// Try to get issuer certificate from store. Due to limitations of the API
-// this can only retrieve a single certificate matching a given subject name.
-// However it will fill the cache with all matching certificates, so we can
-// examine the cache for all matches. Return values are: 1 lookup
-// successful.  0 certificate not found. -1 some other error.
-int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
+int X509_STORE_CTX_get1_issuer(X509 **out_issuer, X509_STORE_CTX *ctx,
+                               X509 *x) {
   X509_NAME *xn;
   X509_OBJECT obj, *pobj;
   int idx, ret;
@@ -519,7 +532,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   }
   // If certificate matches all OK
   if (x509_check_issued_with_callback(ctx, x, obj.data.x509)) {
-    *issuer = obj.data.x509;
+    *out_issuer = obj.data.x509;
     return 1;
   }
   X509_OBJECT_free_contents(&obj);
@@ -542,7 +555,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
         break;
       }
       if (x509_check_issued_with_callback(ctx, x, pobj->data.x509)) {
-        *issuer = pobj->data.x509;
+        *out_issuer = pobj->data.x509;
         X509_OBJECT_up_ref_count(pobj);
         ret = 1;
         break;
@@ -581,26 +594,9 @@ void X509_STORE_set_verify_cb(X509_STORE *ctx,
   ctx->verify_cb = verify_cb;
 }
 
-X509_STORE_CTX_verify_cb X509_STORE_get_verify_cb(X509_STORE *ctx) {
-  return ctx->verify_cb;
-}
-
-void X509_STORE_set_get_issuer(X509_STORE *ctx,
-                               X509_STORE_CTX_get_issuer_fn get_issuer) {
-  ctx->get_issuer = get_issuer;
-}
-
-X509_STORE_CTX_get_issuer_fn X509_STORE_get_get_issuer(X509_STORE *ctx) {
-  return ctx->get_issuer;
-}
-
 void X509_STORE_set_get_crl(X509_STORE *ctx,
                             X509_STORE_CTX_get_crl_fn get_crl) {
   ctx->get_crl = get_crl;
-}
-
-X509_STORE_CTX_get_crl_fn X509_STORE_get_get_crl(X509_STORE *ctx) {
-  return ctx->get_crl;
 }
 
 void X509_STORE_set_check_crl(X509_STORE *ctx,
@@ -608,8 +604,6 @@ void X509_STORE_set_check_crl(X509_STORE *ctx,
   ctx->check_crl = check_crl;
 }
 
-X509_STORE_CTX_check_crl_fn X509_STORE_get_check_crl(X509_STORE *ctx) {
-  return ctx->check_crl;
+X509_STORE *X509_STORE_CTX_get0_store(const X509_STORE_CTX *ctx) {
+  return ctx->ctx;
 }
-
-X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
