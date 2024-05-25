@@ -178,9 +178,6 @@ cc_object {
         "//apex_available:platform",
         "com.android.adbd",
         "com.android.adservices",
-        "com.android.art",
-        "com.android.art.debug",
-        "com.android.art.testing",
         "com.android.btservices",
         "com.android.compos",
         "com.android.conscrypt",
@@ -283,9 +280,6 @@ cc_library {
         "//apex_available:platform",
         "com.android.adbd",
         "com.android.adservices",
-        "com.android.art",
-        "com.android.art.debug",
-        "com.android.art.testing",
         "com.android.btservices",
         "com.android.compos",
         "com.android.conscrypt",
@@ -348,8 +342,6 @@ cc_library {
 cc_library_static {
     name: "libcrypto_static",
     visibility: [
-        "//art/build/sdk",
-        "//art/dex2oat", // Only for test use (note this module isn't in apex_available).
         "//bootable/recovery/updater",
         "//bootable/deprecated-ota/updater",
         "//external/conscrypt",
@@ -410,6 +402,46 @@ cc_library_static {
         "//packages/modules/Virtualization:__subpackages__",
         "//system/security/diced/open_dice",
     ],
+}
+
+// For static linking into the ART module to provide limited functionality:
+// bignums and SHA1 for ELF checksums.
+cc_library_static {
+    name: "libcrypto_for_art",
+    defaults: [
+        "libcrypto_defaults",
+        "boringssl_defaults",
+    ],
+    srcs: [
+        "src/crypto/cpu_*.c",
+        "src/crypto/crypto.c",
+        "src/crypto/err/err.c",
+        "src/crypto/fipsmodule/bn/*.c",
+        "src/crypto/fipsmodule/bn/asm/*.c",
+        "src/crypto/fipsmodule/rand/*.c",
+        "src/crypto/fipsmodule/sha/sha1.c",
+        "src/crypto/mem.c",
+        "src/crypto/stack/stack.c",
+        "src/crypto/thread_pthread.c",
+        "src/gen/crypto/err_data.c",
+    ],
+    target: {
+        linux: {
+            srcs: [
+                "src/gen/bcm/*-linux.S",
+            ],
+        },
+    },
+    visibility: [
+        "//art:__subpackages__",
+        "//libcore:__subpackages__",
+    ],
+    apex_available: [
+        "com.android.art",
+        "com.android.art.debug",
+        "com.android.art.testing",
+    ],
+    min_sdk_version: "29",
 }
 
 // Common defaults for lib*_fuzz_unsafe. These are unsafe and deterministic
