@@ -830,6 +830,12 @@ cc_library_static {
         "//apex_available:platform",
         "com.android.virt",
     ],
+
+    // b/336916369: This library gets linked into a rust rlib.  Disable LTO
+    // until cross-language lto is supported.
+    lto: {
+        never: true,
+    },
 }
 
 cc_library_static {
@@ -840,6 +846,12 @@ cc_library_static {
         "libcrypto_baremetal",
         "libssl_baremetal",
     ],
+
+    // b/336916369: This library gets linked into a rust rlib.  Disable LTO
+    // until cross-language lto is supported.
+    lto: {
+        never: true,
+    },
 }
 
 cc_library_host_static {
