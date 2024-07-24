@@ -93,6 +93,10 @@
             "crypto/fipsmodule/sha/sha512.c",
             "crypto/fipsmodule/tls/kdf.c"
         ],
+        "asm": [
+            "third_party/fiat/asm/fiat_p256_adx_mul.S",
+            "third_party/fiat/asm/fiat_p256_adx_sqr.S"
+        ],
         "perlasm_aarch64": [
             {"src": "crypto/fipsmodule/aes/asm/aesv8-armx.pl", "dst": "aesv8-armv8"},
             {"src": "crypto/fipsmodule/modes/asm/aesv8-gcm-armv8.pl"},
@@ -478,7 +482,6 @@
             "crypto/bytestring/internal.h",
             "crypto/chacha/internal.h",
             "crypto/cipher_extra/internal.h",
-            "crypto/conf/conf_def.h",
             "crypto/conf/internal.h",
             "crypto/cpu_arm_linux.h",
             "crypto/curve25519/curve25519_tables.h",
@@ -549,9 +552,7 @@
             "crypto/hrss/asm/poly_rq_mul.S",
             "crypto/poly1305/poly1305_arm_asm.S",
             "third_party/fiat/asm/fiat_curve25519_adx_mul.S",
-            "third_party/fiat/asm/fiat_curve25519_adx_square.S",
-            "third_party/fiat/asm/fiat_p256_adx_mul.S",
-            "third_party/fiat/asm/fiat_p256_adx_sqr.S"
+            "third_party/fiat/asm/fiat_curve25519_adx_square.S"
         ],
         "perlasm_aarch64": [
             {"src": "crypto/chacha/asm/chacha-armv8.pl"},
@@ -610,6 +611,7 @@
         "hdrs": [
             "include/openssl/pki/certificate.h",
             "include/openssl/pki/signature_verify_cache.h",
+            "include/openssl/pki/verify.h",
             "include/openssl/pki/verify_error.h"
         ],
         "internal_hdrs": [
@@ -859,6 +861,8 @@
             "crypto/cipher_extra/test/nist_cavp/*.txt",
             "crypto/curve25519/ed25519_tests.txt",
             "crypto/dilithium/dilithium_tests.txt",
+            "crypto/dilithium/edge_cases_draft_dilithium3_sign.txt",
+            "crypto/dilithium/edge_cases_draft_dilithium3_verify.txt",
             "crypto/ecdh_extra/ecdh_tests.txt",
             "crypto/evp/evp_tests.txt",
             "crypto/evp/scrypt_tests.txt",

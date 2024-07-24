@@ -35,6 +35,21 @@ macro_rules! unsafe_iuf_algo {
             fn hash_to_vec(input: &[u8]) -> Vec<u8> {
                 Self::hash(input).as_slice().to_vec()
             }
+
+            /// Create a new context for incremental hashing.
+            fn new() -> Self {
+                $name::new()
+            }
+
+            /// Hash the contents of `input`.
+            fn update(&mut self, input: &[u8]) {
+                self.update(input);
+            }
+
+            /// Finish the hashing and return the digest.
+            fn digest_to_vec(self) -> alloc::vec::Vec<u8> {
+                self.digest().to_vec()
+            }
         }
 
         impl $name {
@@ -90,7 +105,7 @@ macro_rules! unsafe_iuf_algo {
 
         impl From<$name> for alloc::vec::Vec<u8> {
             fn from(ctx: $name) -> alloc::vec::Vec<u8> {
-                ctx.digest().into()
+                ctx.digest_to_vec()
             }
         }
 

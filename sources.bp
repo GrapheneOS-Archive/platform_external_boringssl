@@ -605,6 +605,8 @@ cc_defaults {
         "src/crypto/cipher_extra/test/xchacha20_poly1305_tests.txt",
         "src/crypto/curve25519/ed25519_tests.txt",
         "src/crypto/dilithium/dilithium_tests.txt",
+        "src/crypto/dilithium/edge_cases_draft_dilithium3_sign.txt",
+        "src/crypto/dilithium/edge_cases_draft_dilithium3_verify.txt",
         "src/crypto/ecdh_extra/ecdh_tests.txt",
         "src/crypto/evp/evp_tests.txt",
         "src/crypto/evp/scrypt_tests.txt",

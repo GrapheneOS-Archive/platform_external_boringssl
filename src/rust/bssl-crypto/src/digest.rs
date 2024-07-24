@@ -41,7 +41,7 @@ unsafe impl ForeignTypeRef for MdRef {
     type CType = bssl_sys::EVP_MD;
 }
 
-/// Used internally to parameterize other primitives.
+/// Provides the ability to hash in an algorithm-agnostic manner.
 pub trait Algorithm {
     /// The size of the resulting digest.
     const OUTPUT_LEN: usize;
@@ -52,6 +52,15 @@ pub trait Algorithm {
 
     /// Hashes a message.
     fn hash_to_vec(input: &[u8]) -> Vec<u8>;
+
+    /// Create a new context for incremental hashing.
+    fn new() -> Self;
+
+    /// Hash the contents of `input`.
+    fn update(&mut self, input: &[u8]);
+
+    /// Finish the hashing and return the digest.
+    fn digest_to_vec(self) -> Vec<u8>;
 }
 
 /// The insecure SHA-1 hash algorithm.

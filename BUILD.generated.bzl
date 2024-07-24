@@ -226,7 +226,6 @@ crypto_internal_headers = [
     "src/crypto/bytestring/internal.h",
     "src/crypto/chacha/internal.h",
     "src/crypto/cipher_extra/internal.h",
-    "src/crypto/conf/conf_def.h",
     "src/crypto/conf/internal.h",
     "src/crypto/cpu_arm_linux.h",
     "src/crypto/curve25519/curve25519_tables.h",
@@ -696,6 +695,7 @@ crypto_sources_nasm = [
 pki_headers = [
     "src/include/openssl/pki/certificate.h",
     "src/include/openssl/pki/signature_verify_cache.h",
+    "src/include/openssl/pki/verify.h",
     "src/include/openssl/pki/verify_error.h",
 ]
 
