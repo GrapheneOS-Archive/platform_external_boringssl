@@ -22,9 +22,10 @@
 // Safety: see the "Safety" sections within about the requirements for the
 // functions named in the macro parameters.
 macro_rules! unsafe_iuf_algo {
-    ($name:ident, $output_len:expr, $evp_md:ident, $one_shot:ident, $init:ident, $update:ident, $final_func:ident) => {
+    ($name:ident, $output_len:expr, $block_len:expr, $evp_md:ident, $one_shot:ident, $init:ident, $update:ident, $final_func:ident) => {
         impl Algorithm for $name {
             const OUTPUT_LEN: usize = $output_len as usize;
+            const BLOCK_LEN: usize = $block_len as usize;
 
             fn get_md(_: sealed::Sealed) -> &'static MdRef {
                 // Safety:
