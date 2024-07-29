@@ -662,6 +662,7 @@ cc_test_library {
 cc_test {
     name: "boringssl_crypto_test",
     test_config: "CryptoNativeTests.xml",
+    test_suites: ["general-tests"],
     host_supported: false,
     vendor_available: false,
     product_available: false,
@@ -696,6 +697,7 @@ cc_test {
 cc_test {
     name: "boringssl_ssl_test",
     test_config: "SslNativeTests.xml",
+    test_suites: ["general-tests"],
     host_supported: false,
     vendor_available: false,
     product_available: false,
